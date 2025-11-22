@@ -142,13 +142,13 @@ export default function Home() {
   const [isRateLoading, setIsRateLoading] = useState(false);
   const [isSavingRate, setIsSavingRate] = useState(false);
   const [rateStatus, setRateStatus] = useState<FeedbackState>(null);
-  const [isRateExpanded, setIsRateExpanded] = useState(false);
   const [extras, setExtras] = useState<ExtraItem[]>([]);
   const [extrasTitle, setExtrasTitle] = useState("");
   const [extrasAmount, setExtrasAmount] = useState("");
   const [status, setStatus] = useState<FeedbackState>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [savingDay, setSavingDay] = useState<WeekdayKey | null>(null);
 
   const weekKey = formatDateKey(weekStart);
 
@@ -382,7 +382,6 @@ export default function Home() {
         type: "success",
         message: "Hourly rate saved.",
       });
-      setIsRateExpanded(false);
     } catch (err) {
       console.error(err);
       setRateStatus({
@@ -394,12 +393,11 @@ export default function Home() {
     }
   };
 
-  const handleSave = async () => {
+  const saveWeek = async (origin: "week" | WeekdayKey) => {
     if (!supabase) {
       return;
     }
 
-    setIsSaving(true);
     setStatus(null);
 
     if (!hourlyRate || hourlyRateNumber <= 0) {
@@ -407,7 +405,6 @@ export default function Home() {
         type: "error",
         message: "Enter and save an hourly rate first.",
       });
-      setIsSaving(false);
       return;
     }
 
@@ -441,9 +438,17 @@ export default function Home() {
         return;
       }
 
+      const dayLabel =
+        origin === "week"
+          ? null
+          : weekdays.find((day) => day.key === origin)?.label ?? "Day";
+
       setStatus({
         type: "success",
-        message: "Week saved to Supabase.",
+        message:
+          origin === "week"
+            ? "Week saved to Supabase."
+            : `${dayLabel} saved.`,
       });
     } catch (err) {
       console.error(err);
@@ -451,9 +456,19 @@ export default function Home() {
         type: "error",
         message: "Unexpected error while saving.",
       });
-    } finally {
-      setIsSaving(false);
     }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    await saveWeek("week");
+    setIsSaving(false);
+  };
+
+  const handleSaveDay = async (day: WeekdayKey) => {
+    setSavingDay(day);
+    await saveWeek(day);
+    setSavingDay(null);
   };
 
   const formattedWeekInputValue = formatDateKey(weekStart);
@@ -543,49 +558,34 @@ export default function Home() {
                 ) : null}
               </p>
             </div>
+          </div>
+          <p className="mt-4 text-sm text-slate-500">
+            Save once, used for every week. Update any time.
+          </p>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="flex flex-1 items-center gap-3">
+              <div className="text-3xl font-semibold text-slate-900">$</div>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.5"
+                min="0"
+                value={hourlyRate}
+                onChange={(event) => setHourlyRate(event.target.value)}
+                placeholder="18"
+                className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-3xl font-semibold text-slate-900 shadow-inner focus:border-slate-900 focus:outline-none"
+              />
+              <span className="text-lg font-medium text-slate-500">/hr</span>
+            </div>
             <button
               type="button"
-              onClick={() => setIsRateExpanded((prev) => !prev)}
-              className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-900 hover:text-slate-900"
+              onClick={handleSaveRate}
+              disabled={isSavingRate}
+              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
-              {isRateExpanded
-                ? "Close"
-                : hourlyRateNumber > 0
-                  ? "Edit rate"
-                  : "Set rate"}
+              {isSavingRate ? "Saving…" : "Save rate"}
             </button>
           </div>
-          {isRateExpanded ? (
-            <>
-              <p className="mt-4 text-sm text-slate-500">
-                Save once, used for every week. Update any time.
-              </p>
-              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <div className="flex flex-1 items-center gap-3">
-                  <div className="text-3xl font-semibold text-slate-900">$</div>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step="0.5"
-                    min="0"
-                    value={hourlyRate}
-                    onChange={(event) => setHourlyRate(event.target.value)}
-                    placeholder="18"
-                    className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-3xl font-semibold text-slate-900 shadow-inner focus:border-slate-900 focus:outline-none"
-                  />
-                  <span className="text-lg font-medium text-slate-500">/hr</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleSaveRate}
-                  disabled={isSavingRate}
-                  className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
-                >
-                  {isSavingRate ? "Saving…" : "Save rate"}
-                </button>
-              </div>
-            </>
-          ) : null}
           {rateStatus ? (
             <p
               className={`mt-3 text-sm ${
@@ -607,31 +607,49 @@ export default function Home() {
             </span>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {weekdays.map((day) => (
-              <label
-                key={day.key}
-                className="flex flex-col rounded-2xl border border-slate-200 p-4 shadow-inner"
-              >
-                <span className="text-sm font-semibold text-slate-500">
-                  {day.label}
-                </span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="0.25"
-                  min="0"
-                  value={hours[day.key]}
-                  onChange={(event) =>
-                    handleHoursChange(day.key, event.target.value)
-                  }
-                  placeholder="0"
-                  className="mt-2 rounded-xl border border-transparent bg-slate-50 px-4 py-3 text-3xl font-semibold text-slate-900 focus:border-slate-900 focus:outline-none"
-                />
-                <span className="mt-1 text-xs uppercase tracking-[0.3em] text-slate-400">
-                  {day.short}
-                </span>
-              </label>
-            ))}
+            {weekdays.map((day) => {
+              const inputId = `hours-${day.key}`;
+              const isDaySaving = savingDay === day.key;
+              return (
+                <div
+                  key={day.key}
+                  className="flex flex-col rounded-2xl border border-slate-200 p-4 shadow-inner"
+                >
+                  <label
+                    htmlFor={inputId}
+                    className="text-sm font-semibold text-slate-500"
+                  >
+                    {day.label}
+                  </label>
+                  <div className="mt-2 flex items-center gap-3">
+                    <input
+                      id={inputId}
+                      type="number"
+                      inputMode="decimal"
+                      step="0.25"
+                      min="0"
+                      value={hours[day.key]}
+                      onChange={(event) =>
+                        handleHoursChange(day.key, event.target.value)
+                      }
+                      placeholder="0"
+                      className="flex-1 rounded-xl border border-transparent bg-slate-50 px-4 py-3 text-3xl font-semibold text-slate-900 focus:border-slate-900 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSaveDay(day.key)}
+                      disabled={isDaySaving || isSaving}
+                      className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 transition hover:border-slate-900 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isDaySaving ? "…" : "Save"}
+                    </button>
+                  </div>
+                  <span className="mt-1 text-xs uppercase tracking-[0.3em] text-slate-400">
+                    {day.short}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </section>
 
