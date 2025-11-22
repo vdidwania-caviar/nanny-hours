@@ -149,6 +149,7 @@ export default function Home() {
   const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savingDay, setSavingDay] = useState<WeekdayKey | null>(null);
+  const [isEditingRate, setIsEditingRate] = useState(false);
 
   const weekKey = formatDateKey(weekStart);
 
@@ -382,6 +383,7 @@ export default function Home() {
         type: "success",
         message: "Hourly rate saved.",
       });
+      setIsEditingRate(false);
     } catch (err) {
       console.error(err);
       setRateStatus({
@@ -540,9 +542,9 @@ export default function Home() {
         </section>
 
         <section className="rounded-3xl bg-white p-6 shadow-lg shadow-slate-200">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-col gap-4 rounded-[32px] border border-slate-100 bg-slate-50/60 px-6 py-5 text-slate-900 shadow-inner sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-medium uppercase tracking-[0.3em] text-slate-500">
+              <p className="text-xs font-semibold uppercase tracking-[0.4em] text-slate-500">
                 Hourly rate
               </p>
               <p className="text-3xl font-semibold text-slate-900">
@@ -558,35 +560,54 @@ export default function Home() {
                 ) : null}
               </p>
             </div>
-          </div>
-          <p className="mt-4 text-sm text-slate-500">
-            Save once, used for every week. Update any time.
-          </p>
-          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="flex flex-1 items-center gap-3">
-              <div className="text-3xl font-semibold text-slate-900">$</div>
-              <input
-                type="number"
-                inputMode="decimal"
-                step="0.5"
-                min="0"
-                value={hourlyRate}
-                onChange={(event) => setHourlyRate(event.target.value)}
-                placeholder="18"
-                className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-3xl font-semibold text-slate-900 shadow-inner focus:border-slate-900 focus:outline-none"
-              />
-              <span className="text-lg font-medium text-slate-500">/hr</span>
-            </div>
             <button
               type="button"
-              onClick={handleSaveRate}
-              disabled={isSavingRate}
-              className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+              onClick={() => setIsEditingRate((prev) => !prev)}
+              className="rounded-full border-2 border-blue-500 px-6 py-2 text-sm font-semibold text-blue-600 transition hover:bg-blue-50"
             >
-              {isSavingRate ? "Saving…" : "Save rate"}
+              {isEditingRate ? "Close" : hourlyRateNumber > 0 ? "Edit rate" : "Set rate"}
             </button>
           </div>
-          {rateStatus ? (
+          {isEditingRate ? (
+            <div className="mt-4 rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-inner">
+              <p className="text-sm text-slate-500">
+                Save once, used for every week. Update any time.
+              </p>
+              <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <div className="flex flex-1 items-center gap-3">
+                  <div className="text-3xl font-semibold text-slate-900">$</div>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.5"
+                    min="0"
+                    value={hourlyRate}
+                    onChange={(event) => setHourlyRate(event.target.value)}
+                    placeholder="18"
+                    className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-3xl font-semibold text-slate-900 shadow-inner focus:border-slate-900 focus:outline-none"
+                  />
+                  <span className="text-lg font-medium text-slate-500">/hr</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSaveRate}
+                  disabled={isSavingRate}
+                  className="rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  {isSavingRate ? "Saving…" : "Save rate"}
+                </button>
+              </div>
+              {rateStatus ? (
+                <p
+                  className={`mt-3 text-sm ${
+                    rateStatus.type === "success" ? "text-emerald-600" : "text-red-600"
+                  }`}
+                >
+                  {rateStatus.message}
+                </p>
+              ) : null}
+            </div>
+          ) : rateStatus ? (
             <p
               className={`mt-3 text-sm ${
                 rateStatus.type === "success" ? "text-emerald-600" : "text-red-600"
@@ -606,22 +627,19 @@ export default function Home() {
               Running total: {totalHours.toFixed(2)} hrs
             </span>
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
             {weekdays.map((day) => {
               const inputId = `hours-${day.key}`;
               const isDaySaving = savingDay === day.key;
               return (
-                <div
-                  key={day.key}
-                  className="flex flex-col rounded-2xl border border-slate-200 p-4 shadow-inner"
-                >
-                  <label
-                    htmlFor={inputId}
-                    className="text-sm font-semibold text-slate-500"
-                  >
-                    {day.label}
-                  </label>
-                  <div className="mt-2 flex items-center gap-3">
+                <div key={day.key} className="flex items-center gap-3">
+                  <div className="flex-1 rounded-3xl border border-slate-200 bg-white p-4 shadow-inner">
+                    <label
+                      htmlFor={inputId}
+                      className="text-sm font-semibold text-slate-500"
+                    >
+                      {day.label}
+                    </label>
                     <input
                       id={inputId}
                       type="number"
@@ -633,20 +651,20 @@ export default function Home() {
                         handleHoursChange(day.key, event.target.value)
                       }
                       placeholder="0"
-                      className="flex-1 rounded-xl border border-transparent bg-slate-50 px-4 py-3 text-3xl font-semibold text-slate-900 focus:border-slate-900 focus:outline-none"
+                      className="mt-2 w-full rounded-2xl border border-transparent bg-slate-50 px-4 py-3 text-3xl font-semibold text-slate-900 focus:border-slate-900 focus:outline-none"
                     />
-                    <button
-                      type="button"
-                      onClick={() => handleSaveDay(day.key)}
-                      disabled={isDaySaving || isSaving}
-                      className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-600 transition hover:border-slate-900 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {isDaySaving ? "…" : "Save"}
-                    </button>
+                    <span className="mt-1 block text-xs uppercase tracking-[0.3em] text-slate-400">
+                      {day.short}
+                    </span>
                   </div>
-                  <span className="mt-1 text-xs uppercase tracking-[0.3em] text-slate-400">
-                    {day.short}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleSaveDay(day.key)}
+                    disabled={isDaySaving || isSaving}
+                    className="rounded-full border border-slate-200 px-5 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-600 transition hover:border-slate-900 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {isDaySaving ? "…" : "Save"}
+                  </button>
                 </div>
               );
             })}
