@@ -43,7 +43,7 @@ const longDateFormatter = new Intl.DateTimeFormat("en-US", {
   year: "numeric",
 });
 
-const toDecimal = (value: string | number | null | undefined): number => {
+const toDecimal = (value: unknown): number => {
   if (typeof value === "number") {
     return Number.isFinite(value) ? value : 0;
   }
