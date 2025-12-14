@@ -25,11 +25,20 @@ export default function CalculatorPage() {
     const discountAmount = afterTax * (discount / 100);
     const finalAmount = afterTax - discountAmount;
     const difference = vendor - finalAmount;
+    
+    // Calculate commission/below-market percentage
+    // If vendor > final: vendor is charging (vendor - final) / final * 100 commission
+    // If vendor < final: vendor is (final - vendor) / final * 100 below market
+    let commissionPercent = 0;
+    if (finalAmount > 0 && vendor > 0) {
+      commissionPercent = ((vendor - finalAmount) / finalAmount) * 100;
+    }
 
     return {
       discountAmount: Number.isFinite(discountAmount) ? discountAmount : 0,
       finalAmount: Number.isFinite(finalAmount) ? finalAmount : 0,
       difference: Number.isFinite(difference) ? difference : 0,
+      commissionPercent: Number.isFinite(commissionPercent) ? commissionPercent : 0,
       hasVendorPrice: vendor > 0,
     };
   }, [amount, taxPercent, discountPercent, vendorPrice]);
@@ -191,25 +200,49 @@ export default function CalculatorPage() {
             </div>
 
             {calculations.hasVendorPrice && (
-              <div className={`flex items-center justify-between rounded-2xl border-2 px-5 py-4 ${
-                calculations.difference >= 0 
-                  ? "border-blue-200 bg-blue-50" 
-                  : "border-red-200 bg-red-50"
-              }`}>
-                <div>
-                  <p className="text-sm font-medium text-slate-700">
-                    Savings vs Vendor
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    Vendor Price − Final Amount
+              <>
+                <div className={`flex items-center justify-between rounded-2xl border-2 px-5 py-4 ${
+                  calculations.difference >= 0 
+                    ? "border-blue-200 bg-blue-50" 
+                    : "border-red-200 bg-red-50"
+                }`}>
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">
+                      Savings vs Vendor
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Vendor Price − Final Amount
+                    </p>
+                  </div>
+                  <p className={`text-3xl font-semibold ${
+                    calculations.difference >= 0 ? "text-blue-600" : "text-red-600"
+                  }`}>
+                    {calculations.difference >= 0 ? "+" : ""}{currencyFormatter.format(calculations.difference)}
                   </p>
                 </div>
-                <p className={`text-3xl font-semibold ${
-                  calculations.difference >= 0 ? "text-blue-600" : "text-red-600"
+
+                <div className={`flex items-center justify-between rounded-2xl border-2 px-5 py-4 ${
+                  calculations.commissionPercent >= 0 
+                    ? "border-purple-200 bg-purple-50" 
+                    : "border-teal-200 bg-teal-50"
                 }`}>
-                  {calculations.difference >= 0 ? "+" : ""}{currencyFormatter.format(calculations.difference)}
-                </p>
-              </div>
+                  <div>
+                    <p className="text-sm font-medium text-slate-700">
+                      {calculations.commissionPercent >= 0 ? "Vendor Commission" : "Below Market"}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {calculations.commissionPercent >= 0 
+                        ? "% markup vendor is charging" 
+                        : "% cheaper than your price"}
+                    </p>
+                  </div>
+                  <p className={`text-3xl font-semibold ${
+                    calculations.commissionPercent >= 0 ? "text-purple-600" : "text-teal-600"
+                  }`}>
+                    {calculations.commissionPercent >= 0 ? "+" : ""}{calculations.commissionPercent.toFixed(1)}%
+                  </p>
+                </div>
+              </>
             )}
           </div>
         </section>
