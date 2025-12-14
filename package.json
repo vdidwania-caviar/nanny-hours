@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3500",
+    "dev": "next dev -p 3500 --webpack",
     "build": "next build",
     "start": "next start -p 3500",
     "lint": "eslint"
@@ -11,6 +11,7 @@
   "dependencies": {
     "@supabase/supabase-js": "^2.84.0",
     "next": "16.0.7",
+    "next-pwa": "^5.6.0",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },
