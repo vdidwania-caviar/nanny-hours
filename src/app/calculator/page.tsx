@@ -12,22 +12,27 @@ export default function CalculatorPage() {
   const [amount, setAmount] = useState("");
   const [taxPercent, setTaxPercent] = useState("");
   const [discountPercent, setDiscountPercent] = useState("");
+  const [vendorPrice, setVendorPrice] = useState("");
 
   const calculations = useMemo(() => {
     const x = parseFloat(amount) || 0;
     const tax = parseFloat(taxPercent) || 0;
     const discount = parseFloat(discountPercent) || 0;
+    const vendor = parseFloat(vendorPrice) || 0;
 
     // Calculate: (X * (1 + tax%)) * discount%
     const afterTax = x * (1 + tax / 100);
     const discountAmount = afterTax * (discount / 100);
     const finalAmount = afterTax - discountAmount;
+    const difference = vendor - finalAmount;
 
     return {
       discountAmount: Number.isFinite(discountAmount) ? discountAmount : 0,
       finalAmount: Number.isFinite(finalAmount) ? finalAmount : 0,
+      difference: Number.isFinite(difference) ? difference : 0,
+      hasVendorPrice: vendor > 0,
     };
-  }, [amount, taxPercent, discountPercent]);
+  }, [amount, taxPercent, discountPercent, vendorPrice]);
 
   return (
     <div className="min-h-screen bg-slate-50 px-4 py-10 sm:px-6">
@@ -122,6 +127,32 @@ export default function CalculatorPage() {
                 Enter 20 for 20% discount
               </p>
             </div>
+
+            <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-inner">
+              <label
+                htmlFor="vendorPrice"
+                className="text-sm font-semibold text-slate-500"
+              >
+                Vendor Price (optional)
+              </label>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-2xl font-semibold text-slate-400">$</span>
+                <input
+                  id="vendorPrice"
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  value={vendorPrice}
+                  onChange={(e) => setVendorPrice(e.target.value)}
+                  placeholder="0.00"
+                  className="w-full rounded-2xl border border-transparent bg-slate-50 px-4 py-3 text-3xl font-semibold text-slate-900 focus:border-slate-900 focus:outline-none"
+                />
+              </div>
+              <p className="mt-1 text-xs text-slate-400">
+                Compare with vendor&apos;s listed price
+              </p>
+            </div>
           </div>
         </section>
 
@@ -158,6 +189,28 @@ export default function CalculatorPage() {
                 {currencyFormatter.format(calculations.finalAmount)}
               </p>
             </div>
+
+            {calculations.hasVendorPrice && (
+              <div className={`flex items-center justify-between rounded-2xl border-2 px-5 py-4 ${
+                calculations.difference >= 0 
+                  ? "border-blue-200 bg-blue-50" 
+                  : "border-red-200 bg-red-50"
+              }`}>
+                <div>
+                  <p className="text-sm font-medium text-slate-700">
+                    Savings vs Vendor
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Vendor Price − Final Amount
+                  </p>
+                </div>
+                <p className={`text-3xl font-semibold ${
+                  calculations.difference >= 0 ? "text-blue-600" : "text-red-600"
+                }`}>
+                  {calculations.difference >= 0 ? "+" : ""}{currencyFormatter.format(calculations.difference)}
+                </p>
+              </div>
+            )}
           </div>
         </section>
       </div>
