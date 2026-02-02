@@ -681,7 +681,7 @@ export default function Home() {
               value={extrasTitle}
               onChange={(event) => setExtrasTitle(event.target.value)}
               placeholder="Groceries"
-              className="flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-base text-slate-900 placeholder:text-slate-300 focus:border-slate-900 focus:outline-none"
+              className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-black placeholder:text-slate-500 [color-scheme:light] focus:border-slate-900 focus:outline-none"
             />
             <input
               type="number"
@@ -691,7 +691,7 @@ export default function Home() {
               value={extrasAmount}
               onChange={(event) => setExtrasAmount(event.target.value)}
               placeholder="45"
-              className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-base text-slate-900 placeholder:text-slate-300 focus:border-slate-900 focus:outline-none sm:w-32"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base text-black placeholder:text-slate-500 [color-scheme:light] focus:border-slate-900 focus:outline-none sm:w-32"
             />
             <button
               type="button"
