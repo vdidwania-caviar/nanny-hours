@@ -1,8 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import type { SupabaseClient } from "@supabase/supabase-js";
-import { getSupabaseBrowserClient } from "@/lib/supabase/client";
+import { useEffect, useState } from "react";
 
 const weekdays = [
   { key: "monday", label: "Monday", short: "Mon" },
@@ -113,27 +111,7 @@ const generateId = (): string => {
   return Math.random().toString(36).slice(2, 10);
 };
 
-const MissingEnvNotice = () => (
-  <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-8">
-    <div className="max-w-md rounded-3xl bg-white p-8 text-center shadow-lg shadow-slate-200">
-      <p className="text-lg font-semibold text-slate-900">
-        Add your Supabase keys
-      </p>
-      <p className="mt-3 text-sm text-slate-600">
-        Place <code>NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
-        <code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code> inside a{" "}
-        <code>.env.local</code> file, then restart the dev server.
-      </p>
-    </div>
-  </div>
-);
-
 export default function Home() {
-  const supabase = useMemo<SupabaseClient | null>(
-    () => getSupabaseBrowserClient(),
-    [],
-  );
-
   const [weekStart, setWeekStart] = useState<Date>(() =>
     getWeekStart(new Date()),
   );
@@ -154,27 +132,16 @@ export default function Home() {
   const weekKey = formatDateKey(weekStart);
 
   useEffect(() => {
-    if (!supabase) {
-      return;
-    }
-
     let cancelled = false;
 
     const fetchWeek = async () => {
       setIsFetching(true);
       setStatus(null);
       try {
-        const { data, error } = await supabase
-          .from("weekly_logs")
-          .select("hourly_rate, hours, extras")
-          .eq("week_start", weekKey)
-          .maybeSingle();
+        const res = await fetch(`/api/weekly-logs?week_start=${weekKey}`);
+        if (cancelled) return;
 
-        if (cancelled) {
-          return;
-        }
-
-        if (error) {
+        if (!res.ok) {
           setStatus({
             type: "error",
             message: "Could not load that week. Try again.",
@@ -183,6 +150,8 @@ export default function Home() {
           setExtras([]);
           return;
         }
+
+        const { data } = await res.json();
 
         if (data) {
           const storedHours = createEmptyHours();
@@ -219,30 +188,19 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [supabase, weekKey]);
+  }, [weekKey]);
 
   useEffect(() => {
-    if (!supabase) {
-      return;
-    }
-
     let cancelled = false;
 
     const fetchHourlyRate = async () => {
       setIsRateLoading(true);
       setRateStatus(null);
       try {
-        const { data, error } = await supabase
-          .from("settings")
-          .select("numeric_value")
-          .eq("name", "hourly_rate")
-          .maybeSingle();
+        const res = await fetch("/api/settings/hourly-rate");
+        if (cancelled) return;
 
-        if (cancelled) {
-          return;
-        }
-
-        if (error) {
+        if (!res.ok) {
           setRateStatus({
             type: "error",
             message: "Could not load saved hourly rate.",
@@ -250,8 +208,10 @@ export default function Home() {
           return;
         }
 
-        if (data?.numeric_value !== null && data?.numeric_value !== undefined) {
-          const numeric = Number(data.numeric_value);
+        const { numeric_value } = await res.json();
+
+        if (numeric_value !== null && numeric_value !== undefined) {
+          const numeric = Number(numeric_value);
           setHourlyRate(
             numeric % 1 === 0 ? numeric.toString() : numeric.toFixed(2),
           );
@@ -276,11 +236,7 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [supabase]);
-
-  if (!supabase) {
-    return <MissingEnvNotice />;
-  }
+  }, []);
 
   const totalHours = weekdays.reduce(
     (sum, day) => sum + toDecimal(hours[day.key]),
@@ -344,10 +300,6 @@ export default function Home() {
   };
 
   const handleSaveRate = async () => {
-    if (!supabase) {
-      return;
-    }
-
     const numericValue = Number(toDecimal(hourlyRate).toFixed(2));
     if (numericValue <= 0) {
       setRateStatus({
@@ -361,14 +313,13 @@ export default function Home() {
     setRateStatus(null);
 
     try {
-      const { error } = await supabase
-        .from("settings")
-        .upsert(
-          { name: "hourly_rate", numeric_value: numericValue },
-          { onConflict: "name" },
-        );
+      const res = await fetch("/api/settings/hourly-rate", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ numeric_value: numericValue }),
+      });
 
-      if (error) {
+      if (!res.ok) {
         setRateStatus({
           type: "error",
           message: "Could not save hourly rate.",
@@ -396,10 +347,6 @@ export default function Home() {
   };
 
   const saveWeek = async (origin: "week" | WeekdayKey) => {
-    if (!supabase) {
-      return;
-    }
-
     setStatus(null);
 
     if (!hourlyRate || hourlyRateNumber <= 0) {
@@ -420,22 +367,21 @@ export default function Home() {
     );
 
     try {
-      const { error } = await supabase
-        .from("weekly_logs")
-        .upsert(
-          {
-            week_start: weekKey,
-            hourly_rate: Number(hourlyRateNumber.toFixed(2)),
-            hours: normalizedHours,
-            extras,
-          },
-          { onConflict: "week_start" },
-        );
+      const res = await fetch("/api/weekly-logs", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          week_start: weekKey,
+          hourly_rate: Number(hourlyRateNumber.toFixed(2)),
+          hours: normalizedHours,
+          extras,
+        }),
+      });
 
-      if (error) {
+      if (!res.ok) {
         setStatus({
           type: "error",
-          message: "Could not save. Double-check your Supabase table.",
+          message: "Could not save. Please try again.",
         });
         return;
       }
@@ -449,7 +395,7 @@ export default function Home() {
         type: "success",
         message:
           origin === "week"
-            ? "Week saved to Supabase."
+            ? "Week saved."
             : `${dayLabel} saved.`,
       });
     } catch (err) {
